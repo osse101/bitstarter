@@ -17,7 +17,7 @@ var app = express.createServer(express.logger());
 
 
 app.get('/', function(request, response) {
-    response.send(buffer.toString("utf-8", 0)'Hello World 2!');
+    response.send(buffer.toString("utf-8", 0));
 });
 
 var port = process.env.PORT || 5000;
