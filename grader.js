@@ -24,9 +24,11 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
+var ready = false;
 var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
@@ -34,6 +36,19 @@ var assertFileExists = function(infile) {
         process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
     }
     return instr;
+};
+
+var assertUrlExists = function(inurl){
+    console.log("Trying to find %s", inurl);
+    rest.get(inurl).on('complete', function(response){
+	if(response instanceof Error){
+	    console.log("Error with url");
+	    this.retry(5000);
+	}
+	console.log("Loadign complete");
+	fs.writeFileSync("outfile.html", response);
+	ready = true;
+    });
 };
 
 var cheerioHtmlFile = function(htmlfile) {
@@ -65,10 +80,21 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-u, --url <http_address>', 'Path to file')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+
+    //Wait for url data transfer to complete
+    if(program.url != null){
+	assertUrlExists(program.url);
+	while(!ready){;}
+	var checkJson = checkHtmlFile("outfile.html", program.checks);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	consol.log(outJson);
+    }else{
+	var checkJson = checkHtmlFile(program.file, program.checks);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	console.log(outJson);
+    }
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
